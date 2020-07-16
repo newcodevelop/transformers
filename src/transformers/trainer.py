@@ -551,7 +551,7 @@ class Trainer:
                     continue
                 tr_loss += self._training_step(model, inputs, optimizer)
                 if use_ewc:
-                    
+                    loss = 0.0
                     for n, p in model.named_parameters():
                         if n!='classifier.weight' and n!= 'classifier.bias':
                             _loss = precision_matrices[n] * (p - star_vars[n]) ** 2

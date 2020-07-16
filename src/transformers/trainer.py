@@ -7,7 +7,7 @@ import warnings
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-
+from copy import deepcopy
 import numpy as np
 import torch
 from packaging import version
@@ -371,8 +371,43 @@ class Trainer:
         Helper to get number of samples in a :class:`~torch.utils.data.DataLoader` by accessing its Dataset.
         """
         return len(dataloader.dataset)
+    def compute_fisher(self):
+        model = self.model
+        dataset = self.get_eval_dataloader()
+        
+        k = 0
+        logger.info(f"computing fischer matrix...")
+        for steps,inputs in enumerate(dataset):
+            logger.info(f"{inputs}")
+            k+=1
+            if k>=10:
+                break
+        
+        params = {n: p for n, p in model.named_parameters() if p.requires_grad}
+        precision_matrices = {}
+        for n, p in deepcopy(params).items():
+          p.data.zero_()
+          precision_matrices[n] = variable(p.data)
 
-    def train(self, model_path: Optional[str] = None):
+        model.eval()
+        for _,data in enumerate(dataset, 0):
+            ids = data['ids'].to(device, dtype = torch.long)
+            mask = data['mask'].to(device, dtype = torch.long)
+            token_type_ids = data['token_type_ids'].to(device, dtype = torch.long)
+            targets = data['targets'].to(device, dtype = torch.long)
+
+            output = model(ids, mask, token_type_ids).view(1, -1)
+            #output = self.model(input).view(1, -1)
+            label = output.max(1)[1].view(-1)
+            loss = torch.nn.functional.nll_loss(torch.nn.functional.log_softmax(output, dim=1), label)
+            loss.backward()
+            for n, p in model.named_parameters():
+                precision_matrices[n].data += p.grad.data ** 2 / len(dataset)
+
+        precision_matrices = {n: p for n, p in precision_matrices.items()}
+        return precision_matrices
+
+    def train(self, model_path: Optional[str] = None, use_ewc = False,lam = 5000,star_vars = None):
         """
         Main training entry point.
 
@@ -382,6 +417,9 @@ class Trainer:
                 training will resume from the optimizer/scheduler states loaded here.
         """
         train_dataloader = self.get_train_dataloader()
+        #eval_dataloader = self.get_eval_dataloader()
+        if use_ewc:
+            precision_matrices = self.compute_fisher()
         if self.args.max_steps > 0:
             t_total = self.args.max_steps
             num_train_epochs = (
@@ -495,8 +533,14 @@ class Trainer:
                 if steps_trained_in_current_epoch > 0:
                     steps_trained_in_current_epoch -= 1
                     continue
-
                 tr_loss += self._training_step(model, inputs, optimizer)
+                if use_ewc:
+                    
+                    for n, p in model.named_parameters():
+                        if n!='classifier.weight' and n!= 'classifier.bias':
+                            _loss = precision_matrices[n] * (p - star_vars[n]) ** 2
+                            loss += lam*_loss.sum()
+                    tr_loss += loss
 
                 if (step + 1) % self.args.gradient_accumulation_steps == 0 or (
                     # last step in epoch but step is always smaller than gradient_accumulation_steps

@@ -193,6 +193,8 @@ class Trainer:
         self.compute_metrics = compute_metrics
         self.prediction_loss_only = prediction_loss_only
         self.optimizers = optimizers
+        self.precision_matrices = None
+        self.star_vars = None
         if tb_writer is not None:
             self.tb_writer = tb_writer
         elif is_tensorboard_available() and self.is_world_master():
@@ -418,8 +420,8 @@ class Trainer:
         """
         train_dataloader = self.get_train_dataloader()
         #eval_dataloader = self.get_eval_dataloader()
-        if use_ewc:
-            precision_matrices = self.compute_fisher()
+        #if use_ewc:
+        
         if self.args.max_steps > 0:
             t_total = self.args.max_steps
             num_train_epochs = (
@@ -618,7 +620,13 @@ class Trainer:
         if self.args.past_index and hasattr(self, "_past"):
             # Clean the state at the end of training
             delattr(self, "_past")
-
+        self.precision_matrices = self.compute_fisher()
+        self.star_vars = {}
+        for n, p in model.named_parameters():
+            self.star_vars[n] = p
+            
+        logger.info(f'precision matrix = {self.precision_matrices}')
+        logger.info(f'')
         logger.info("\n\nTraining completed. Do not forget to share your model on huggingface.co/models =)\n\n")
         return TrainOutput(self.global_step, tr_loss / self.global_step)
 

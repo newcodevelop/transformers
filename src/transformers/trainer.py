@@ -396,13 +396,14 @@ class Trainer:
           precision_matrices[n] = self.variable(p.data)
 
         model.eval()
+        device = 'cuda'
         for _,data in enumerate(dataset, 0):
             ids = data['input_ids'].to(device, dtype = torch.long)
             mask = data['attention_mask'].to(device, dtype = torch.long)
             token_type_ids = data['token_type_ids'].to(device, dtype = torch.long)
             targets = data['labels'].to(device, dtype = torch.long)
 
-            output = model(ids, mask, token_type_ids).view(1, -1)
+            output = model(**data).view(1, -1)
             #output = self.model(input).view(1, -1)
             label = output.max(1)[1].view(-1)
             loss = torch.nn.functional.nll_loss(torch.nn.functional.log_softmax(output, dim=1), label)

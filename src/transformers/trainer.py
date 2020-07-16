@@ -373,7 +373,7 @@ class Trainer:
         Helper to get number of samples in a :class:`~torch.utils.data.DataLoader` by accessing its Dataset.
         """
         return len(dataloader.dataset)
-    def variable(t: torch.Tensor, use_cuda=True, **kwargs):
+    def variable(self,t: torch.Tensor, use_cuda=True, **kwargs):
         if torch.cuda.is_available() and use_cuda:
             t = t.cuda()
         return torch.autograd.Variable(t, **kwargs)
@@ -393,7 +393,7 @@ class Trainer:
         precision_matrices = {}
         for n, p in deepcopy(params).items():
           p.data.zero_()
-          precision_matrices[n] = variable(p.data)
+          precision_matrices[n] = self.variable(p.data)
 
         model.eval()
         for _,data in enumerate(dataset, 0):

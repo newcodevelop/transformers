@@ -373,6 +373,10 @@ class Trainer:
         Helper to get number of samples in a :class:`~torch.utils.data.DataLoader` by accessing its Dataset.
         """
         return len(dataloader.dataset)
+    def variable(t: torch.Tensor, use_cuda=True, **kwargs):
+        if torch.cuda.is_available() and use_cuda:
+            t = t.cuda()
+        return torch.autograd.Variable(t, **kwargs)
     def compute_fisher(self):
         model = self.model
         dataset = self.get_eval_dataloader()
@@ -409,7 +413,7 @@ class Trainer:
         precision_matrices = {n: p for n, p in precision_matrices.items()}
         return precision_matrices
 
-    def train(self, model_path: Optional[str] = None, use_ewc = False,lam = 5000,star_vars = None):
+    def train(self, model_path: Optional[str] = None, use_ewc = False,lam = 5000,precision_matrices = None,star_vars = None):
         """
         Main training entry point.
 

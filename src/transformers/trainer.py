@@ -410,10 +410,11 @@ class Trainer:
             if self.args.n_gpu > 1:
                 inputs["return_tuple"] = True
 
-            output = model(**inputs)[0].view(1, -1)
+            output = model(**inputs)[1].view(1, -1)
             logger.info(f"output = {output}")
             #output = self.model(input).view(1, -1)
             label = output.max(1)[1].view(-1)
+            logger.info(f"label = {label}")
             loss = torch.nn.functional.nll_loss(torch.nn.functional.log_softmax(output, dim=1), label)
             loss.backward()
             for n, p in model.named_parameters():

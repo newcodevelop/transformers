@@ -554,7 +554,7 @@ class Trainer:
                 if use_ewc:
                     tr_loss += self._training_step(model, inputs, optimizer,lam,True,precision_matrices_list,star_vars_list)
                 else:
-                    tr_loss += self._training_step(model, inputs, optimizer)
+                    tr_loss += self._training_step(model, inputs, optimizer,lam)
 
                 if (step + 1) % self.args.gradient_accumulation_steps == 0 or (
                     # last step in epoch but step is always smaller than gradient_accumulation_steps

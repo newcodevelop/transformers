@@ -423,7 +423,7 @@ class Trainer:
         precision_matrices = {n: p for n, p in precision_matrices.items()}
         return precision_matrices
 
-    def train(self, model_path: Optional[str] = None, use_ewc = False,lam = 5000,precision_matrices = None,star_vars = None):
+    def train(self, model_path: Optional[str] = None, use_ewc = False,lam = 5000,precision_matrices_list = None,star_vars_list = None):
         """
         Main training entry point.
 
@@ -549,14 +549,12 @@ class Trainer:
                 if steps_trained_in_current_epoch > 0:
                     steps_trained_in_current_epoch -= 1
                     continue
-                tr_loss += self._training_step(model, inputs, optimizer)
+                
+                #num_models = len(star_vars_list)
                 if use_ewc:
-                    loss = 0.0
-                    for n, p in model.named_parameters():
-                        if n!='classifier.weight' and n!= 'classifier.bias':
-                            _loss = precision_matrices[n] * (p - star_vars[n]) ** 2
-                            loss += lam*_loss.sum()
-                    tr_loss += loss
+                    tr_loss += self._training_step(model, inputs, optimizer,True,precision_matrices_list,star_vars_list)
+                else:
+                    tr_loss += self._training_step(model, inputs, optimizer)
 
                 if (step + 1) % self.args.gradient_accumulation_steps == 0 or (
                     # last step in epoch but step is always smaller than gradient_accumulation_steps
@@ -640,7 +638,7 @@ class Trainer:
             self.star_vars[n] = p
             
         logger.info(f'precision matrix = {self.precision_matrices}')
-        logger.info(f'')
+        logger.info(f'star_vars = {self.star_vars}')
         logger.info("\n\nTraining completed. Do not forget to share your model on huggingface.co/models =)\n\n")
         return TrainOutput(self.global_step, tr_loss / self.global_step)
 
@@ -675,7 +673,7 @@ class Trainer:
             logger.info(output)
 
     def _training_step(
-        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], optimizer: torch.optim.Optimizer
+        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], optimizer: torch.optim.Optimizer, ewc = False,precision_matrices_list = None, star_vars_list = None
     ) -> float:
         model.train()
         for k, v in inputs.items():
@@ -690,7 +688,16 @@ class Trainer:
 
         outputs = model(**inputs)
         loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
+        
+        if ewc:
+            num_models = len(star_vars_list)
+            for cnt in range(num_models):
+                for n, p in model.named_parameters():
 
+                    if n!='classifier.weight' and n!= 'classifier.bias':
+
+                        _loss = precision_matrices_list[cnt][n] * (p - star_vars_list[cnt][n]) ** 2
+                        loss += lam*_loss.sum()
         if self.args.past_index >= 0:
             self._past = outputs[self.args.past_index]
 

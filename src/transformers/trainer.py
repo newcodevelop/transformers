@@ -552,7 +552,7 @@ class Trainer:
                 
                 #num_models = len(star_vars_list)
                 if use_ewc:
-                    tr_loss += self._training_step(model, inputs, optimizer,True,precision_matrices_list,star_vars_list)
+                    tr_loss += self._training_step(model, inputs, optimizer,lam,True,precision_matrices_list,star_vars_list)
                 else:
                     tr_loss += self._training_step(model, inputs, optimizer)
 
@@ -673,7 +673,7 @@ class Trainer:
             logger.info(output)
 
     def _training_step(
-        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], optimizer: torch.optim.Optimizer, ewc = False,precision_matrices_list = None, star_vars_list = None
+        self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], optimizer: torch.optim.Optimizer, lam,ewc = False,precision_matrices_list = None, star_vars_list = None
     ) -> float:
         model.train()
         for k, v in inputs.items():

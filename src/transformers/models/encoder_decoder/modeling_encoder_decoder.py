@@ -210,6 +210,8 @@ class EncoderDecoderModel(PreTrainedModel):
 
         self.encoder = encoder
         self.decoder = decoder
+        self.projector_s = nn.Linear(768,64)
+        self.projector_c = nn.Linear(768,64)
 
         if self.encoder.config.to_dict() != self.config.encoder.to_dict():
             logger.warning(
@@ -499,7 +501,12 @@ class EncoderDecoderModel(PreTrainedModel):
             encoder_outputs = BaseModelOutput(*encoder_outputs)
 
         encoder_hidden_states = encoder_outputs[0]
-
+        
+        c = self.projector_c(encoder_hidden_states)
+        s = self.projector_s(encoder_hidden_states)
+        
+        
+        
         # optionally project encoder_hidden_states
         if (
             self.encoder.config.hidden_size != self.decoder.config.hidden_size
@@ -551,7 +558,7 @@ class EncoderDecoderModel(PreTrainedModel):
             encoder_last_hidden_state=encoder_outputs.last_hidden_state,
             encoder_hidden_states=encoder_outputs.hidden_states,
             encoder_attentions=encoder_outputs.attentions,
-        )
+        ),s,c
 
     def prepare_decoder_input_ids_from_labels(self, labels: torch.Tensor):
         return shift_tokens_right(labels, self.config.pad_token_id, self.config.decoder_start_token_id)

@@ -210,8 +210,8 @@ class EncoderDecoderModel(PreTrainedModel):
 
         self.encoder = encoder
         self.decoder = decoder
-        self.projector_s = nn.Linear(768,64)
-        self.projector_c = nn.Linear(768,64)
+        self.projector_s = nn.Linear(512,64)
+        self.projector_c = nn.Linear(512,64)
 
         if self.encoder.config.to_dict() != self.config.encoder.to_dict():
             logger.warning(

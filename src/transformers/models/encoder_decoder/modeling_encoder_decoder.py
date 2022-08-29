@@ -210,8 +210,8 @@ class EncoderDecoderModel(PreTrainedModel):
 
         self.encoder = encoder
         self.decoder = decoder
-        self.projector_s = nn.Linear(512,64)
-        self.projector_c = nn.Linear(512,64)
+        self.projector_s = nn.Linear(512,512)
+        self.projector_c = nn.Linear(512,512)
 
         if self.encoder.config.to_dict() != self.config.encoder.to_dict():
             logger.warning(
@@ -505,7 +505,7 @@ class EncoderDecoderModel(PreTrainedModel):
         c = self.projector_c(encoder_hidden_states)
         s = self.projector_s(encoder_hidden_states)
         
-        
+        encoder_hidden_states = s+c #(r=s+c)
         
         # optionally project encoder_hidden_states
         if (
